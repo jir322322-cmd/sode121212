@@ -30,6 +30,7 @@ class StitchSettings:
     bg_threshold: int = 245
     bg_mode: str = "lab_paper"
     crop_padding_px: int = 4
+    edge_trim_px: int = 40
     max_angle: float = 7.0
     overlap_max: int = 15
     seam_band_px: int = 30
