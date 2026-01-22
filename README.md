@@ -24,6 +24,17 @@ pip install -r requirements.txt
 python -m app.main
 ```
 
+## Seamless blend stitching (CLI example)
+```bash
+python -m app.blend_cli \
+  --tiles tiles/1.png tiles/2.png tiles/3.png \
+  --corners corners.json \
+  --out pano.png \
+  --border-crop-px 30 \
+  --feather-px 80 \
+  --num-bands 6
+```
+
 ## Usage
 1. Add tiles (files, folder, or drag-and-drop).
 2. Set output TIFF path.
