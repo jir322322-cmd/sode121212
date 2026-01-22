@@ -93,6 +93,9 @@ class MapRestorerWindow(QtWidgets.QMainWindow):
         self.crop_padding = QtWidgets.QSpinBox()
         self.crop_padding.setRange(0, 50)
         self.crop_padding.setValue(4)
+        self.edge_trim = QtWidgets.QSpinBox()
+        self.edge_trim.setRange(0, 200)
+        self.edge_trim.setValue(40)
         self.max_angle = QtWidgets.QDoubleSpinBox()
         self.max_angle.setRange(0, 15)
         self.max_angle.setValue(7.0)
@@ -131,6 +134,7 @@ class MapRestorerWindow(QtWidgets.QMainWindow):
         form.addRow("bg_threshold", self.bg_threshold)
         form.addRow("bg_mode", self.bg_mode)
         form.addRow("crop_padding_px", self.crop_padding)
+        form.addRow("edge_trim_px", self.edge_trim)
         form.addRow("max_angle", self.max_angle)
         form.addRow("overlap_max", self.overlap_max)
         form.addRow("seam_band_px", self.seam_band)
@@ -232,6 +236,7 @@ class MapRestorerWindow(QtWidgets.QMainWindow):
             bg_threshold=self.bg_threshold.value(),
             bg_mode=self.bg_mode.currentText(),
             crop_padding_px=self.crop_padding.value(),
+            edge_trim_px=self.edge_trim.value(),
             max_angle=self.max_angle.value(),
             overlap_max=self.overlap_max.value(),
             seam_band_px=self.seam_band.value(),

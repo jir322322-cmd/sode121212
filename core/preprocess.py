@@ -32,6 +32,10 @@ def compute_mask(image: np.ndarray, settings: StitchSettings) -> np.ndarray:
         mask = _rgb_threshold_mask(image, settings)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    if settings.edge_trim_px > 0:
+        trim = int(settings.edge_trim_px)
+        trim_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (trim * 2 + 1, trim * 2 + 1))
+        mask = cv2.dilate(mask, trim_kernel)
     return mask
 
 

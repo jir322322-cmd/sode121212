@@ -159,17 +159,32 @@ class StitchWorker(QtCore.QObject):
         for coord, tile in tiles.items():
             placement = layout.placements[coord]
             image = tile.image
+            mask = tile.mask
             if placement.transform.scale_x != 1.0 or placement.transform.scale_y != 1.0:
                 image = cv2.resize(image, None, fx=placement.transform.scale_x, fy=placement.transform.scale_y, interpolation=cv2.INTER_LINEAR)
+                mask = cv2.resize(mask, None, fx=placement.transform.scale_x, fy=placement.transform.scale_y, interpolation=cv2.INTER_NEAREST)
             x0 = placement.origin_x + int(placement.transform.dx)
             y0 = placement.origin_y + int(placement.transform.dy)
             h, w = image.shape[:2]
-            x1 = min(canvas.shape[1], x0 + w)
-            y1 = min(canvas.shape[0], y0 + h)
-            x0 = max(0, x0)
-            y0 = max(0, y0)
-            canvas[y0:y1, x0:x1] = image[: y1 - y0, : x1 - x0]
-            occupancy[y0:y1, x0:x1] = 1
+            dest_x0 = max(0, x0)
+            dest_y0 = max(0, y0)
+            dest_x1 = min(canvas.shape[1], x0 + w)
+            dest_y1 = min(canvas.shape[0], y0 + h)
+            if dest_x1 <= dest_x0 or dest_y1 <= dest_y0:
+                continue
+            src_x0 = max(0, -x0)
+            src_y0 = max(0, -y0)
+            src_x1 = src_x0 + (dest_x1 - dest_x0)
+            src_y1 = src_y0 + (dest_y1 - dest_y0)
+            image_crop = image[src_y0:src_y1, src_x0:src_x1]
+            mask_crop = mask[src_y0:src_y1, src_x0:src_x1]
+            content_mask = mask_crop == 0
+            canvas_region = canvas[dest_y0:dest_y1, dest_x0:dest_x1]
+            canvas_region[content_mask] = image_crop[content_mask]
+            canvas[dest_y0:dest_y1, dest_x0:dest_x1] = canvas_region
+            occupancy_region = occupancy[dest_y0:dest_y1, dest_x0:dest_x1]
+            occupancy_region[content_mask] = 1
+            occupancy[dest_y0:dest_y1, dest_x0:dest_x1] = occupancy_region
         return canvas, occupancy
 
     def _save_debug(self, tiles: Dict[Tuple[int, int], TileData], layout: LayoutResult, gap_before: np.ndarray, gap_after: np.ndarray, canvas: np.ndarray) -> None:
