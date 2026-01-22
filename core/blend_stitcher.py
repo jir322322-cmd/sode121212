@@ -27,10 +27,13 @@ def stitch_tiles(
 
     Notes on tuning:
       - Increase border_crop_px to remove more scan borders and frames.
+      - The auto-crop detects bright paper borders and trims them first.
       - Increase feather_px to soften seams if they are still visible.
       - Increase num_bands for smoother multi-band blending at the cost of RAM.
     """
     inputs = _validate_inputs(imgs, corners)
+    cropped = _auto_crop_tiles(inputs.images, inputs.corners)
+    cropped = _apply_border_crop(cropped.images, cropped.corners, border_crop_px)
     cropped = _apply_border_crop(inputs.images, inputs.corners, border_crop_px)
     masks = [_make_feather_mask(img.shape[:2], feather_px) for img in cropped.images]
     compensator = _create_exposure_compensator()
@@ -84,6 +87,51 @@ def _apply_border_crop(
         cropped_images.append(img[border_crop_px : h - border_crop_px, border_crop_px : w - border_crop_px])
         cropped_corners.append((corner[0] + border_crop_px, corner[1] + border_crop_px))
     return StitchInputs(cropped_images, cropped_corners)
+
+
+def _auto_crop_tiles(
+    imgs: Sequence[np.ndarray],
+    corners: Sequence[Tuple[int, int]],
+    padding: int = 2,
+) -> StitchInputs:
+    cropped_images: List[np.ndarray] = []
+    cropped_corners: List[Tuple[int, int]] = []
+    for img, corner in zip(imgs, corners, strict=True):
+        mask = _detect_background_mask(img)
+        content_bbox = _content_bbox(mask)
+        if content_bbox is None:
+            cropped_images.append(img)
+            cropped_corners.append(corner)
+            continue
+        x0, y0, x1, y1 = content_bbox
+        x0 = max(0, x0 - padding)
+        y0 = max(0, y0 - padding)
+        x1 = min(img.shape[1] - 1, x1 + padding)
+        y1 = min(img.shape[0] - 1, y1 + padding)
+        if x1 <= x0 or y1 <= y0:
+            cropped_images.append(img)
+            cropped_corners.append(corner)
+            continue
+        cropped_images.append(img[y0 : y1 + 1, x0 : x1 + 1])
+        cropped_corners.append((corner[0] + x0, corner[1] + y0))
+    return StitchInputs(cropped_images, cropped_corners)
+
+
+def _detect_background_mask(image: np.ndarray) -> np.ndarray:
+    lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+    l, a, b = cv2.split(lab)
+    chroma = cv2.magnitude(a.astype(np.float32) - 128.0, b.astype(np.float32) - 128.0)
+    background = (l >= 245) & (chroma < 12.0)
+    mask = background.astype(np.uint8) * 255
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+
+def _content_bbox(mask: np.ndarray) -> Tuple[int, int, int, int] | None:
+    ys, xs = np.where(mask == 0)
+    if len(xs) == 0 or len(ys) == 0:
+        return None
+    return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
 
 
 def _make_feather_mask(shape: Tuple[int, int], feather_px: int) -> np.ndarray:
