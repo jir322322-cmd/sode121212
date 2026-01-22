@@ -34,6 +34,7 @@ def stitch_tiles(
     inputs = _validate_inputs(imgs, corners)
     cropped = _auto_crop_tiles(inputs.images, inputs.corners)
     cropped = _apply_border_crop(cropped.images, cropped.corners, border_crop_px)
+    cropped = _apply_border_crop(inputs.images, inputs.corners, border_crop_px)
     masks = [_make_feather_mask(img.shape[:2], feather_px) for img in cropped.images]
     compensator = _create_exposure_compensator()
     compensator.feed(cropped.corners, cropped.images, masks)
